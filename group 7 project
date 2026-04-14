@@ -1,0 +1,420 @@
+"""
+🎯 Quiz Game - Python Console Application
+Group Project | GitHub Repository
+"""
+
+import random
+import time
+import json
+import os
+from datetime import datetime
+
+
+# ─────────────────────────────────────────────
+#  QUESTION BANK
+# ─────────────────────────────────────────────
+
+QUESTIONS = {
+    "Python": [
+        {
+            "question": "What is the output of: print(type([]))?",
+            "options": ["A) <class 'tuple'>", "B) <class 'list'>", "C) <class 'dict'>", "D) <class 'array'>"],
+            "answer": "B",
+            "explanation": "[] creates an empty list, so type([]) returns <class 'list'>."
+        },
+        {
+            "question": "Which keyword is used to define a function in Python?",
+            "options": ["A) func", "B) function", "C) def", "D) define"],
+            "answer": "C",
+            "explanation": "'def' is the keyword used to define a function in Python."
+        },
+        {
+            "question": "What does the 'len()' function return?",
+            "options": ["A) Last element", "B) Number of items", "C) Data type", "D) Memory size"],
+            "answer": "B",
+            "explanation": "len() returns the number of items in an object."
+        },
+        {
+            "question": "Which of the following is a mutable data type?",
+            "options": ["A) Tuple", "B) String", "C) List", "D) Integer"],
+            "answer": "C",
+            "explanation": "Lists are mutable; their elements can be changed after creation."
+        },
+        {
+            "question": "What is the correct way to open a file in Python?",
+            "options": ["A) open('file.txt', 'r')", "B) file.open('file.txt')", "C) read('file.txt')", "D) File('file.txt')"],
+            "answer": "A",
+            "explanation": "open('filename', 'mode') is the built-in way to open files in Python."
+        },
+    ],
+    "General Science": [
+        {
+            "question": "What is the chemical symbol for water?",
+            "options": ["A) WA", "B) H2O", "C) HO2", "D) OHH"],
+            "answer": "B",
+            "explanation": "Water is composed of 2 Hydrogen atoms and 1 Oxygen atom — H2O."
+        },
+        {
+            "question": "Which planet is known as the Red Planet?",
+            "options": ["A) Venus", "B) Jupiter", "C) Mars", "D) Saturn"],
+            "answer": "C",
+            "explanation": "Mars appears red due to iron oxide (rust) on its surface."
+        },
+        {
+            "question": "What is the speed of light (approx)?",
+            "options": ["A) 3x10^6 m/s", "B) 3x10^8 m/s", "C) 3x10^10 m/s", "D) 3x10^4 m/s"],
+            "answer": "B",
+            "explanation": "The speed of light in a vacuum is approximately 3×10^8 meters/second."
+        },
+        {
+            "question": "What gas do plants absorb from the atmosphere?",
+            "options": ["A) Oxygen", "B) Nitrogen", "C) Carbon Dioxide", "D) Hydrogen"],
+            "answer": "C",
+            "explanation": "Plants absorb CO2 during photosynthesis and release oxygen."
+        },
+        {
+            "question": "Which organ pumps blood throughout the body?",
+            "options": ["A) Lungs", "B) Liver", "C) Kidney", "D) Heart"],
+            "answer": "D",
+            "explanation": "The heart is a muscular organ that pumps blood through the circulatory system."
+        },
+    ],
+    "Math": [
+        {
+            "question": "What is the value of π (pi) up to 2 decimal places?",
+            "options": ["A) 3.14", "B) 3.41", "C) 3.12", "D) 3.16"],
+            "answer": "A",
+            "explanation": "π ≈ 3.14159..., which rounds to 3.14."
+        },
+        {
+            "question": "What is the square root of 144?",
+            "options": ["A) 11", "B) 12", "C) 13", "D) 14"],
+            "answer": "B",
+            "explanation": "12 × 12 = 144, so √144 = 12."
+        },
+        {
+            "question": "What is 15% of 200?",
+            "options": ["A) 25", "B) 35", "C) 30", "D) 20"],
+            "answer": "C",
+            "explanation": "15/100 × 200 = 30."
+        },
+        {
+            "question": "How many sides does a hexagon have?",
+            "options": ["A) 5", "B) 7", "C) 8", "D) 6"],
+            "answer": "D",
+            "explanation": "A hexagon has exactly 6 sides (hexa = 6 in Greek)."
+        },
+        {
+            "question": "What is the result of 2^10?",
+            "options": ["A) 512", "B) 256", "C) 1024", "D) 2048"],
+            "answer": "C",
+            "explanation": "2^10 = 1024."
+        },
+    ],
+    "History": [
+        {
+            "question": "In which year did World War II end?",
+            "options": ["A) 1943", "B) 1944", "C) 1945", "D) 1946"],
+            "answer": "C",
+            "explanation": "World War II ended in 1945 with Germany surrendering in May and Japan in September."
+        },
+        {
+            "question": "Who was the first President of the United States?",
+            "options": ["A) Abraham Lincoln", "B) Thomas Jefferson", "C) John Adams", "D) George Washington"],
+            "answer": "D",
+            "explanation": "George Washington served as the first U.S. President from 1789 to 1797."
+        },
+        {
+            "question": "Which ancient wonder was located in Alexandria?",
+            "options": ["A) Colossus of Rhodes", "B) Lighthouse of Alexandria", "C) Hanging Gardens", "D) Statue of Zeus"],
+            "answer": "B",
+            "explanation": "The Lighthouse of Alexandria was one of the Seven Wonders of the Ancient World."
+        },
+        {
+            "question": "The French Revolution began in which year?",
+            "options": ["A) 1776", "B) 1799", "C) 1789", "D) 1804"],
+            "answer": "C",
+            "explanation": "The French Revolution began in 1789 with the storming of the Bastille."
+        },
+        {
+            "question": "Who invented the telephone?",
+            "options": ["A) Thomas Edison", "B) Nikola Tesla", "C) Alexander Graham Bell", "D) Guglielmo Marconi"],
+            "answer": "C",
+            "explanation": "Alexander Graham Bell is credited with inventing the telephone in 1876."
+        },
+    ],
+}
+
+LEADERBOARD_FILE = "leaderboard.json"
+
+
+# ─────────────────────────────────────────────
+#  UTILITY FUNCTIONS
+# ─────────────────────────────────────────────
+
+def clear_screen():
+    """Clear the terminal screen."""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def display_banner():
+    """Display the game banner."""
+    print("\n" + "═" * 55)
+    print("        🎯  PYTHON QUIZ GAME  🎯")
+    print("           Group Project - GitHub")
+    print("═" * 55)
+
+
+def display_separator():
+    print("─" * 55)
+
+
+def get_valid_input(prompt, valid_options):
+    """Get validated input from the user."""
+    while True:
+        user_input = input(prompt).strip().upper()
+        if user_input in valid_options:
+            return user_input
+        print(f"  ❌ Invalid input. Please choose from: {', '.join(valid_options)}")
+
+
+def load_leaderboard():
+    """Load leaderboard from JSON file."""
+    if os.path.exists(LEADERBOARD_FILE):
+        try:
+            with open(LEADERBOARD_FILE, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return []
+    return []
+
+
+def save_leaderboard(leaderboard):
+    """Save leaderboard to JSON file."""
+    try:
+        with open(LEADERBOARD_FILE, "w") as f:
+            json.dump(leaderboard, f, indent=4)
+    except IOError:
+        print("  ⚠️  Could not save leaderboard.")
+
+
+def display_leaderboard():
+    """Display the top 10 leaderboard."""
+    leaderboard = load_leaderboard()
+    display_separator()
+    print("  🏆  TOP 10 LEADERBOARD")
+    display_separator()
+    if not leaderboard:
+        print("  No scores yet. Be the first to play!")
+    else:
+        sorted_lb = sorted(leaderboard, key=lambda x: x["score"], reverse=True)[:10]
+        for i, entry in enumerate(sorted_lb, 1):
+            medal = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else f"  {i}."
+            print(f"  {medal} {entry['name']:<15} {entry['score']:>3} pts  |  {entry['category']:<15} |  {entry['date']}")
+    display_separator()
+
+
+# ─────────────────────────────────────────────
+#  CORE GAME LOGIC
+# ─────────────────────────────────────────────
+
+def select_category():
+    """Let player choose a quiz category."""
+    categories = list(QUESTIONS.keys())
+    print("\n  📚 SELECT A CATEGORY:\n")
+    for i, cat in enumerate(categories, 1):
+        print(f"    {i}. {cat}")
+    print(f"    {len(categories)+1}. 🎲 Random Mix")
+
+    valid = [str(i) for i in range(1, len(categories) + 2)]
+    choice = get_valid_input("\n  Enter number: ", valid)
+    choice = int(choice)
+
+    if choice == len(categories) + 1:
+        return "Random Mix"
+    return categories[choice - 1]
+
+
+def select_difficulty():
+    """Select number of questions (acts as difficulty)."""
+    print("\n  ⚙️  SELECT DIFFICULTY:\n")
+    print("    1. Easy   (5 questions)")
+    print("    2. Medium (10 questions)")
+    print("    3. Hard   (15 questions)")
+
+    choice = get_valid_input("\n  Enter number: ", ["1", "2", "3"])
+    return {"1": 5, "2": 10, "3": 15}[choice]
+
+
+def get_questions(category, num_questions):
+    """Fetch and shuffle questions."""
+    if category == "Random Mix":
+        all_q = []
+        for q_list in QUESTIONS.values():
+            all_q.extend(q_list)
+        pool = all_q
+    else:
+        pool = QUESTIONS[category]
+
+    shuffled = pool.copy()
+    random.shuffle(shuffled)
+    return shuffled[:min(num_questions, len(shuffled))]
+
+
+def ask_question(question_data, q_num, total):
+    """Display a question and get the player's answer."""
+    print(f"\n  Question {q_num}/{total}")
+    display_separator()
+    print(f"  {question_data['question']}\n")
+    for option in question_data["options"]:
+        print(f"    {option}")
+    display_separator()
+
+    start_time = time.time()
+    answer = get_valid_input("  Your answer (A/B/C/D): ", ["A", "B", "C", "D"])
+    elapsed = round(time.time() - start_time, 2)
+
+    correct = answer == question_data["answer"]
+
+    if correct:
+        print(f"\n  ✅  Correct! ({elapsed}s)")
+    else:
+        print(f"\n  ❌  Wrong! Correct answer: {question_data['answer']}")
+
+    print(f"  💡  {question_data['explanation']}")
+    time.sleep(1.5)
+    return correct, elapsed
+
+
+def calculate_score(correct, total, time_taken):
+    """Calculate score with time bonus."""
+    base_score = (correct / total) * 100
+    time_bonus = max(0, 50 - int(time_taken / total))
+    return int(base_score + time_bonus)
+
+
+def run_quiz(player_name):
+    """Main quiz runner."""
+    clear_screen()
+    display_banner()
+
+    category = select_category()
+    num_questions = select_difficulty()
+    questions = get_questions(category, num_questions)
+
+    clear_screen()
+    display_banner()
+    print(f"\n  👤 Player  : {player_name}")
+    print(f"  📂 Category: {category}")
+    print(f"  ❓ Questions: {len(questions)}")
+    print("\n  Get ready...", end="", flush=True)
+    time.sleep(2)
+    print(" GO! 🚀")
+    time.sleep(0.5)
+
+    correct_count = 0
+    total_time = 0
+
+    for i, q in enumerate(questions, 1):
+        clear_screen()
+        display_banner()
+        is_correct, elapsed = ask_question(q, i, len(questions))
+        if is_correct:
+            correct_count += 1
+        total_time += elapsed
+
+    # ── Results ──
+    clear_screen()
+    display_banner()
+    score = calculate_score(correct_count, len(questions), total_time)
+
+    print(f"\n  🎉 QUIZ COMPLETE!\n")
+    display_separator()
+    print(f"  Player    : {player_name}")
+    print(f"  Category  : {category}")
+    print(f"  Score     : {correct_count} / {len(questions)} correct")
+    print(f"  Total Time: {round(total_time, 1)}s")
+    print(f"  Points    : {score} 🏅")
+    display_separator()
+
+    if score >= 90:
+        print("  🌟 OUTSTANDING! You're a genius!")
+    elif score >= 70:
+        print("  👏 GREAT JOB! Well done!")
+    elif score >= 50:
+        print("  👍 Not bad! Keep practicing.")
+    else:
+        print("  📖 Keep studying. You'll get better!")
+
+    # Save to leaderboard
+    leaderboard = load_leaderboard()
+    leaderboard.append({
+        "name": player_name,
+        "score": score,
+        "correct": correct_count,
+        "total": len(questions),
+        "category": category,
+        "date": datetime.now().strftime("%Y-%m-%d")
+    })
+    save_leaderboard(leaderboard)
+    print("\n  ✅ Score saved to leaderboard!")
+
+    return score
+
+
+# ─────────────────────────────────────────────
+#  MAIN MENU
+# ─────────────────────────────────────────────
+
+def main():
+    """Entry point — main menu loop."""
+    clear_screen()
+    display_banner()
+
+    print("\n  Welcome to the Python Quiz Game! 🐍")
+    player_name = input("\n  Enter your name: ").strip()
+    if not player_name:
+        player_name = "Player"
+
+    while True:
+        clear_screen()
+        display_banner()
+        print(f"\n  Hello, {player_name}! 👋\n")
+        print("    1. 🎮  Start Quiz")
+        print("    2. 🏆  View Leaderboard")
+        print("    3. 📋  View Categories")
+        print("    4. 🚪  Exit")
+
+        choice = get_valid_input("\n  Choose an option: ", ["1", "2", "3", "4"])
+
+        if choice == "1":
+            run_quiz(player_name)
+            input("\n  Press Enter to return to menu...")
+
+        elif choice == "2":
+            clear_screen()
+            display_banner()
+            display_leaderboard()
+            input("\n  Press Enter to return to menu...")
+
+        elif choice == "3":
+            clear_screen()
+            display_banner()
+            print("\n  📚 AVAILABLE CATEGORIES & TOPICS:\n")
+            for cat, qs in QUESTIONS.items():
+                print(f"  📂 {cat} ({len(qs)} questions)")
+                for q in qs:
+                    print(f"      • {q['question'][:55]}...")
+                print()
+            input("  Press Enter to return to menu...")
+
+        elif choice == "4":
+            clear_screen()
+            display_banner()
+            print(f"\n  Thanks for playing, {player_name}! 👋")
+            print("  ⭐ Don't forget to star the GitHub repo!\n")
+            break
+
+
+if __name__ == "__main__":
+    main()
