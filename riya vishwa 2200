@@ -1,0 +1,377 @@
+"""
+🧮 Modern GUI Calculator
+Python Tkinter — Group Project
+"""
+
+import tkinter as tk
+from tkinter import font
+import math
+
+
+# ─────────────────────────────────────────────
+#  THEME CONFIGURATION
+# ─────────────────────────────────────────────
+
+THEME = {
+    "bg":          "#1a1a2e",   # Deep navy background
+    "display_bg":  "#16213e",   # Darker display area
+    "btn_num":     "#0f3460",   # Number buttons
+    "btn_op":      "#e94560",   # Operator buttons (red accent)
+    "btn_special": "#533483",   # Special buttons (purple)
+    "btn_equal":   "#e94560",   # Equals button
+    "btn_clear":   "#c84b31",   # Clear button
+    "text_main":   "#eaeaea",   # Main text color
+    "text_dim":    "#a0a0c0",   # Dimmed text
+    "text_op":     "#ffffff",   # Operator text
+    "hover_num":   "#1a4a80",   # Number hover
+    "hover_op":    "#ff6b7a",   # Operator hover
+    "hover_sp":    "#6a44a3",   # Special hover
+    "shadow":      "#0d0d1f",   # Shadow color
+}
+
+
+# ─────────────────────────────────────────────
+#  CALCULATOR LOGIC
+# ─────────────────────────────────────────────
+
+class CalculatorLogic:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.current = "0"
+        self.expression = ""
+        self.operator = None
+        self.prev_value = None
+        self.just_evaluated = False
+        self.error = False
+
+    def append_digit(self, digit):
+        if self.error:
+            self.reset()
+
+        if self.just_evaluated:
+            self.current = digit
+            self.just_evaluated = False
+        elif self.current == "0" and digit != ".":
+            self.current = digit
+        elif digit == "." and "." in self.current:
+            return
+        else:
+            if len(self.current) < 15:
+                self.current += digit
+
+    def set_operator(self, op):
+        if self.error:
+            return
+        if self.prev_value is not None and not self.just_evaluated:
+            self.evaluate()
+        self.prev_value = float(self.current)
+        self.operator = op
+        self.expression = self.format_number(self.current) + f" {op}"
+        self.just_evaluated = False
+
+    def evaluate(self):
+        if self.operator is None or self.prev_value is None:
+            return
+        try:
+            curr = float(self.current)
+            if self.operator == "+" :
+                result = self.prev_value + curr
+            elif self.operator == "−":
+                result = self.prev_value - curr
+            elif self.operator == "×":
+                result = self.prev_value * curr
+            elif self.operator == "÷":
+                if curr == 0:
+                    self.current = "Error"
+                    self.expression = "Cannot divide by zero"
+                    self.error = True
+                    self.prev_value = None
+                    self.operator = None
+                    return
+                result = self.prev_value / curr
+            else:
+                return
+
+            self.expression = f"{self.format_number(self.prev_value)} {self.operator} {self.format_number(curr)} ="
+            self.current = self.format_result(result)
+            self.prev_value = None
+            self.operator = None
+            self.just_evaluated = True
+
+        except Exception:
+            self.current = "Error"
+            self.error = True
+
+    def format_number(self, num):
+        if isinstance(num, str):
+            return num
+        if float(num) == int(float(num)) and abs(num) < 1e12:
+            return str(int(float(num)))
+        return f"{num:.6g}"
+
+    def format_result(self, result):
+        if result != result:  # NaN check
+            return "Error"
+        if abs(result) > 1e15 or (abs(result) < 1e-10 and result != 0):
+            return f"{result:.4e}"
+        if float(result) == int(float(result)):
+            return str(int(float(result)))
+        rounded = round(result, 10)
+        return f"{rounded:.10g}"
+
+    def toggle_sign(self):
+        if self.current not in ("0", "Error"):
+            if self.current.startswith("-"):
+                self.current = self.current[1:]
+            else:
+                self.current = "-" + self.current
+
+    def percentage(self):
+        try:
+            val = float(self.current)
+            self.current = self.format_result(val / 100)
+            self.just_evaluated = True
+        except Exception:
+            pass
+
+    def square_root(self):
+        try:
+            val = float(self.current)
+            if val < 0:
+                self.current = "Error"
+                self.error = True
+            else:
+                self.expression = f"√({self.format_number(val)})"
+                self.current = self.format_result(math.sqrt(val))
+                self.just_evaluated = True
+        except Exception:
+            pass
+
+    def square(self):
+        try:
+            val = float(self.current)
+            self.expression = f"({self.format_number(val)})²"
+            self.current = self.format_result(val ** 2)
+            self.just_evaluated = True
+        except Exception:
+            pass
+
+    def backspace(self):
+        if self.error:
+            self.reset()
+            return
+        if self.just_evaluated:
+            return
+        if len(self.current) > 1:
+            self.current = self.current[:-1]
+        else:
+            self.current = "0"
+
+
+# ─────────────────────────────────────────────
+#  GUI APPLICATION
+# ─────────────────────────────────────────────
+
+class CalculatorApp:
+    def __init__(self, root):
+        self.root = root
+        self.logic = CalculatorLogic()
+        self._setup_window()
+        self._setup_fonts()
+        self._build_ui()
+        self._bind_keyboard()
+
+    def _setup_window(self):
+        self.root.title("Calculator")
+        self.root.geometry("380x620")
+        self.root.resizable(False, False)
+        self.root.configure(bg=THEME["bg"])
+        # Center the window
+        self.root.update_idletasks()
+        x = (self.root.winfo_screenwidth() - 380) // 2
+        y = (self.root.winfo_screenheight() - 620) // 2
+        self.root.geometry(f"380x620+{x}+{y}")
+
+    def _setup_fonts(self):
+        self.font_display   = font.Font(family="Consolas", size=38, weight="bold")
+        self.font_expr      = font.Font(family="Consolas", size=13)
+        self.font_btn_large = font.Font(family="Segoe UI", size=18, weight="bold")
+        self.font_btn_small = font.Font(family="Segoe UI", size=14)
+        self.font_title     = font.Font(family="Segoe UI", size=11, weight="bold")
+
+    def _build_ui(self):
+        # ── Title Bar ────────────────────────────────
+        title_frame = tk.Frame(self.root, bg=THEME["bg"], pady=10)
+        title_frame.pack(fill="x")
+        tk.Label(title_frame, text="🧮  CALCULATOR", bg=THEME["bg"],
+                 fg=THEME["text_dim"], font=self.font_title).pack()
+
+        # ── Display Area ──────────────────────────────
+        display_frame = tk.Frame(self.root, bg=THEME["display_bg"],
+                                  padx=20, pady=15)
+        display_frame.pack(fill="x", padx=15)
+
+        # Expression (small top label)
+        self.expr_var = tk.StringVar(value="")
+        tk.Label(display_frame, textvariable=self.expr_var,
+                 bg=THEME["display_bg"], fg=THEME["text_dim"],
+                 font=self.font_expr, anchor="e", height=1).pack(fill="x")
+
+        # Main display
+        self.display_var = tk.StringVar(value="0")
+        tk.Label(display_frame, textvariable=self.display_var,
+                 bg=THEME["display_bg"], fg=THEME["text_main"],
+                 font=self.font_display, anchor="e",
+                 width=14, height=2).pack(fill="x")
+
+        # ── Button Grid ───────────────────────────────
+        btn_frame = tk.Frame(self.root, bg=THEME["bg"], padx=15, pady=15)
+        btn_frame.pack(fill="both", expand=True)
+
+        # Button layout: (label, col, row, colspan, color_key, cmd)
+        buttons = [
+            # Row 0 — scientific row
+            ("√",   0, 0, 1, "special", lambda: self._action("sqrt")),
+            ("x²",  1, 0, 1, "special", lambda: self._action("square")),
+            ("%",   2, 0, 1, "special", lambda: self._action("percent")),
+            ("⌫",   3, 0, 1, "special", lambda: self._action("back")),
+
+            # Row 1
+            ("C",   0, 1, 1, "clear",   lambda: self._action("clear")),
+            ("+/-", 1, 1, 1, "special", lambda: self._action("sign")),
+            ("÷",   2, 1, 1, "op",      lambda: self._op("÷")),
+            ("×",   3, 1, 1, "op",      lambda: self._op("×")),
+
+            # Row 2
+            ("7",   0, 2, 1, "num",     lambda: self._digit("7")),
+            ("8",   1, 2, 1, "num",     lambda: self._digit("8")),
+            ("9",   2, 2, 1, "num",     lambda: self._digit("9")),
+            ("−",   3, 2, 1, "op",      lambda: self._op("−")),
+
+            # Row 3
+            ("4",   0, 3, 1, "num",     lambda: self._digit("4")),
+            ("5",   1, 3, 1, "num",     lambda: self._digit("5")),
+            ("6",   2, 3, 1, "num",     lambda: self._digit("6")),
+            ("+",   3, 3, 1, "op",      lambda: self._op("+")),
+
+            # Row 4
+            ("1",   0, 4, 1, "num",     lambda: self._digit("1")),
+            ("2",   1, 4, 1, "num",     lambda: self._digit("2")),
+            ("3",   2, 4, 1, "num",     lambda: self._digit("3")),
+            ("=",   3, 4, 1, "equal",   lambda: self._action("equal")),
+
+            # Row 5
+            ("0",   0, 5, 2, "num",     lambda: self._digit("0")),
+            (".",   2, 5, 1, "num",     lambda: self._digit(".")),
+        ]
+
+        color_map = {
+            "num":     (THEME["btn_num"],     THEME["hover_num"],  THEME["text_main"]),
+            "op":      (THEME["btn_op"],      THEME["hover_op"],   THEME["text_op"]),
+            "special": (THEME["btn_special"], THEME["hover_sp"],   THEME["text_main"]),
+            "equal":   (THEME["btn_equal"],   THEME["hover_op"],   "#ffffff"),
+            "clear":   (THEME["btn_clear"],   "#e05a40",           "#ffffff"),
+        }
+
+        for col in range(4):
+            btn_frame.columnconfigure(col, weight=1, uniform="col")
+        for row in range(6):
+            btn_frame.rowconfigure(row, weight=1, uniform="row")
+
+        for (label, col, row, colspan, style, cmd) in buttons:
+            bg, hover, fg = color_map[style]
+            self._make_button(btn_frame, label, col, row, colspan, bg, hover, fg, cmd)
+
+    def _make_button(self, parent, label, col, row, colspan, bg, hover, fg, cmd):
+        """Create a styled, hoverable button."""
+        btn = tk.Label(
+            parent,
+            text=label,
+            bg=bg,
+            fg=fg,
+            font=self.font_btn_large if len(label) <= 2 else self.font_btn_small,
+            cursor="hand2",
+            relief="flat",
+        )
+        btn.grid(row=row, column=col, columnspan=colspan,
+                 padx=5, pady=5, sticky="nsew")
+
+        # Hover effects
+        btn.bind("<Enter>",    lambda e, b=btn, h=hover: b.config(bg=h))
+        btn.bind("<Leave>",    lambda e, b=btn, c=bg:    b.config(bg=c))
+        btn.bind("<Button-1>", lambda e, b=btn, c=bg: (b.config(bg=THEME["shadow"]), b.after(100, lambda: b.config(bg=c))))
+        btn.bind("<ButtonRelease-1>", lambda e: cmd())
+
+    # ─── Actions ────────────────────────────────────
+
+    def _digit(self, d):
+        self.logic.append_digit(d)
+        self._refresh()
+
+    def _op(self, op):
+        self.logic.set_operator(op)
+        self._refresh()
+
+    def _action(self, action):
+        if action == "equal":   self.logic.evaluate()
+        elif action == "clear": self.logic.reset()
+        elif action == "back":  self.logic.backspace()
+        elif action == "sign":  self.logic.toggle_sign()
+        elif action == "percent": self.logic.percentage()
+        elif action == "sqrt":  self.logic.square_root()
+        elif action == "square": self.logic.square()
+        self._refresh()
+
+    def _refresh(self):
+        """Update display from logic state."""
+        display = self.logic.current
+        # Shrink font for long numbers
+        if len(display) > 12:
+            self.font_display.configure(size=22)
+        elif len(display) > 8:
+            self.font_display.configure(size=30)
+        else:
+            self.font_display.configure(size=38)
+
+        self.display_var.set(display)
+        self.expr_var.set(self.logic.expression)
+
+    # ─── Keyboard Bindings ───────────────────────────
+
+    def _bind_keyboard(self):
+        bindings = {
+            "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
+            "5": "5", "6": "6", "7": "7", "8": "8", "9": "9",
+            ".": ".", ",": ".",
+        }
+        for key, digit in bindings.items():
+            self.root.bind(key, lambda e, d=digit: self._digit(d))
+
+        self.root.bind("+",        lambda e: self._op("+"))
+        self.root.bind("-",        lambda e: self._op("−"))
+        self.root.bind("*",        lambda e: self._op("×"))
+        self.root.bind("/",        lambda e: self._op("÷"))
+        self.root.bind("<Return>", lambda e: self._action("equal"))
+        self.root.bind("<KP_Enter>", lambda e: self._action("equal"))
+        self.root.bind("<Escape>", lambda e: self._action("clear"))
+        self.root.bind("<BackSpace>", lambda e: self._action("back"))
+        self.root.bind("c",        lambda e: self._action("clear"))
+        self.root.bind("C",        lambda e: self._action("clear"))
+        self.root.bind("r",        lambda e: self._action("sqrt"))
+        self.root.bind("%",        lambda e: self._action("percent"))
+
+
+# ─────────────────────────────────────────────
+#  ENTRY POINT
+# ─────────────────────────────────────────────
+
+def main():
+    root = tk.Tk()
+    app = CalculatorApp(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
